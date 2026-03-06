@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>就业匹配系统 - 小麒麟 🐲</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+        .header { text-align: center; color: white; padding: 30px 0; }
+        .header h1 { font-size: 2rem; margin-bottom: 8px; }
+        .search-box {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+        .search-input {
+            width: 100%;
+            padding: 15px 20px;
+            font-size: 1.1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            outline: none;
+            margin-bottom: 15px;
+        }
+        .search-input:focus { border-color: #667eea; }
+        .search-btn {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.1rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+        .search-btn:disabled { opacity: 0.6; }
+        .suggestions {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            margin-top: -10px;
+            margin-bottom: 15px;
+        }
+        .suggestion-item {
+            padding: 12px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+            background: white;
+        }
+        .suggestion-item:hover { background: #f5f5f5; }
+        .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #667eea;
+            color: white;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            margin-left: 10px;
+        }
+        .result-card {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        .major-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        .major-icon {
+            width: 50px; height: 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 1.5rem;
+        }
+        .job-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+        }
+        .job-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .job-name { font-size: 1.2rem; font-weight: 600; color: #333; }
+        .job-tag {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+        .company-list { margin-top: 15px; }
+        .company-item {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border: 1px solid #e0e0e0;
+        }
+        .company-name { font-weight: 600; color: #333; font-size: 1.1rem; }
+        .company-info { color: #666; font-size: 0.9rem; margin-top: 5px; }
+        .score-row {
+            display: flex;
+            gap: 20px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .score-item { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; }
+        .score-bar {
+            width: 80px;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .score-fill { height: 100%; border-radius: 4px; }
+        .high { background: #4caf50; }
+        .medium { background: #ff9800; }
+        .low { background: #f44336; }
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            margin-right: 8px;
+        }
+        .badge-green { background: #e8f5e9; color: #2e7d32; }
+        .badge-blue { background: #e3f2fd; color: #1565c0; }
+        .badge-orange { background: #fff3e0; color: #ef6c00; }
+        .loading { text-align: center; padding: 40px; color: #667eea; }
+        .empty { text-align: center; padding: 60px 20px; color: #999; }
+        .stats { display: flex; gap: 30px; margin-bottom: 20px; }
+        .stat { text-align: center; }
+        .stat-value { font-size: 2rem; font-weight: 700; color: #667eea; }
+        .stat-label { color: #666; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="container">
+            <div class="header">
+                <h1>🐲 就业匹配系统</h1>
+                <p>输入专业，获取岗位-公司-评估完整匹配</p>
+            </div>
+            
+            <div class="search-box">
+                <input 
+                    type="text" 
+                    class="search-input" 
+                    v-model="query"
+                    @input="onSearchInput"
+                    @keyup.enter="match"
+                    placeholder="输入专业名称，如：软件工程、金融学..."
+                >
+                
+                <div class="suggestions" v-if="suggestions.length > 0 && showSuggestions">
+                    <div 
+                        class="suggestion-item" 
+                        v-for="item in suggestions" 
+                        :key="item.id"
+                        @click="selectMajor(item)"
+                    >
+                        {{ item.name }}
+                        <span class="tag">{{ item.category }}</span>
+                    </div>
+                </div>
+                
+                <button class="search-btn" @click="match" :disabled="loading">
+                    {{ loading ? '匹配中...' : '开始匹配' }}
+                </button>
+            </div>
+            
+            <div class="loading" v-if="loading">
+                <p>🔄 正在分析...</p>
+            </div>
+            
+            <div v-if="result && !loading">
+                <div class="result-card">
+                    <div class="major-header">
+                        <div class="major-icon">🎓</div>
+                        <div>
+                            <h2 style="color: #333;">{{ result.major.name }}</h2>
+                            <p style="color: #666; margin-top: 5px;">{{ result.major.category }} · {{ result.major.discipline || '暂无' }}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="stats">
+                        <div class="stat">
+                            <div class="stat-value">{{ result.total_jobs }}</div>
+                            <div class="stat-label">匹配岗位</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value">{{ result.total_companies }}</div>
+                            <div class="stat-label">推荐公司</div>
+                        </div>
+                    </div>
+                    
+                    <div class="job-card" v-for="job in result.jobs" :key="job.id">
+                        <div class="job-header">
+                            <span class="job-name">{{ job.name }}</span>
+                            <span class="job-tag">匹配度 {{ (job.relevance_score * 100).toFixed(0) }}%</span>
+                        </div>
+                        
+                        <p style="color: #666; margin-bottom: 10px;" v-if="job.description">{{ job.description }}</p>
+                        
+                        <div class="company-list">
+                            <div class="company-item" v-for="c in job.companies" :key="c.id">
+                                <div class="company-name">{{ c.name }}</div>
+                                
+                                <div class="company-info">
+                                    <span class="badge badge-blue" v-if="c.industry_name">{{ c.industry_name }}</span>
+                                    <span class="badge badge-green" v-if="c.campus_recruit">✅ 校招</span>
+                                    <span class="badge badge-orange" v-if="c.employee_count">👥 {{ c.employee_count }}</span>
+                                </div>
+                                
+                                <div class="company-info" style="margin-top: 8px; line-height: 1.6;">
+                                    <strong>文化：</strong>{{ c.company_culture || '暂无' }}<br>
+                                    <strong>氛围：</strong>{{ c.work_atmosphere || '暂无' }}
+                                </div>
+                                
+                                <div class="score-row">
+                                    <div class="score-item" v-if="c.growth_space_score">
+                                        <span>📈 成长空间</span>
+                                        <div class="score-bar">
+                                            <div class="score-fill" :class="getScoreClass(c.growth_space_score)" :style="{width: c.growth_space_score * 10 + '%'}"></div>
+                                        </div>
+                                        <strong>{{ c.growth_space_score }}</strong>
+                                    </div>
+                                    
+                                    <div class="score-item" v-if="c.salary_competitiveness">
+                                        <span>💰 薪资竞争力</span>
+                                        <div class="score-bar">
+                                            <div class="score-fill" :class="getScoreClass(c.salary_competitiveness)" :style="{width: c.salary_competitiveness * 10 + '%'}"></div>
+                                        </div>
+                                        <strong>{{ c.salary_competitiveness }}</strong>
+                                    </div>
+                                </div>
+                                
+                                <div v-if="c.recruit_conditions" style="margin-top: 10px; padding: 10px; background: #f5f5f5; border-radius: 8px; font-size: 0.9rem; color: #666;">
+                                    <strong>招聘条件：</strong>{{ c.recruit_conditions }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="empty" v-if="!result && !loading">
+                <p style="font-size: 3rem; margin-bottom: 15px;">🔍</p>
+                <p>输入专业名称，开始智能匹配</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 嵌入式数据
+        const DB_DATA = {"majors": [{"id": 1, "name": "软件工程", "category": "计算机类", "category_code": "0809", "discipline": "工学", "level": "本科", "created_at": "2026-03-06 02:19:36"}, {"id": 2, "name": "计算机科学与技术", "category": "计算机类", "category_code": "0809", "discipline": "工学", "level": "本科", "created_at": "2026-03-06 02:19:36"}, {"id": 3, "name": "网络工程", "category": "计算机类", "category_code": "0809", "discipline": "工学", "level": "本科", "created_at": "2026-03-06 02:19:36"}, {"id": 4, "name": "人工智能", "category": "计算机类", "category_code": "0809", "discipline": "工学", "level": "本科", "created_at": "2026-03-06 02:19:36"}, {"id": 5, "name": "数据科学与大数据技术", "category": "计算机类", "category_code": "0809", "discipline": "工学", "level": "本科", "created_at": "2026-03-06 02:19:36"}, {"id": 6, "name": "金融学", "category": "金融学类", "category_code": "0203", "discipline": "经济学", "level": "本科", "created_at": "2026-03-06 02:19:36"}, {"id": 7, "name": "会计学", "category": "工商管理类", "category_code": "1202", "discipline": "管理学", "level": "本科", "created_at": "2026-03-06 02:19:36"}, {"id": 8, "name": "工商管理", "category": "工商管理类", "category_code": "1202", "discipline": "管理学", "level": "本科", "created_at": "2026-03-06 02:19:36"}, {"id": 9, "name": "市场营销", "category": "工商管理类", "category_code": "1202", "discipline": "管理学", "level": "本科", "created_at": "2026-03-06 02:19:36"}, {"id": 10, "name": "电子信息工程", "category": "电子信息类", "category_code": "0807", "discipline": "工学", "level": "本科", "created_at": "2026-03-06 02:19:36"}, {"id": 11, "name": "通信工程", "category": "电子信息类", "category_code": "0807", "discipline": "工学", "level": "本科", "created_at": "2026-03-06 02:19:36"}, {"id": 12, "name": "自动化", "category": "自动化类", "category_code": "0808", "discipline": "工学", "level": "本科", "created_at": "2026-03-06 02:19:36"}, {"id": 13, "name": "机械设计制造及其自动化", "category": "机械类", "category_code": "0802", "discipline": "工学", "level": "本科", "created_at": "2026-03-06 02:19:36"}, {"id": 14, "name": "土木工程", "category": "土木类", "category_code": "0810", "discipline": "工学", "level": "本科", "created_at": "2026-03-06 02:19:36"}, {"id": 15, "name": "建筑学", "category": "建筑类", "category_code": "0828", "discipline": "工学", "level": "本科", "created_at": "2026-03-06 02:19:36"}, {"id": 16, "name": "临床医学", "category": "临床医学类", "category_code": "1002", "discipline": "医学", "level": "本科", "created_at": "2026-03-06 02:19:36"}, {"id": 17, "name": "法学", "category": "法学类", "category_code": "0301", "discipline": "法学", "level": "本科", "created_at": "2026-03-06 02:19:36"}, {"id": 18, "name": "汉语言文学", "category": "中国语言文学类", "category_code": "0501", "discipline": "文学", "level": "本科", "created_at": "2026-03-06 02:19:36"}, {"id": 19, "name": "英语", "category": "外国语言文学类", "category_code": "0502", "discipline": "文学", "level": "本科", "created_at": "2026-03-06 02:19:36"}, {"id": 20, "name": "视觉传达设计", "category": "设计学类", "category_code": "1305", "discipline": "艺术学", "level": "本科", "created_at": "2026-03-06 02:19:36"}], "jobs": [{"id": 1, "name": "Java开发工程师", "category": "技术开发", "description": "使用Java进行企业级应用开发", "skills": "[\"Java\", \"Spring\", \"MySQL\"]", "salary_range": null, "created_at": "2026-03-06 02:19:36"}, {"id": 2, "name": "前端开发工程师", "category": "技术开发", "description": "Web前端界面开发", "skills": "[\"HTML/CSS\", \"JavaScript\", \"Vue/React\"]", "salary_range": null, "created_at": "2026-03-06 02:19:36"}, {"id": 3, "name": "Python开发工程师", "category": "技术开发", "description": "Python后端开发/数据分析", "skills": "[\"Python\", \"Django/Flask\", \"\\u6570\\u636e\\u5206\\u6790\"]", "salary_range": null, "created_at": "2026-03-06 02:19:36"}, {"id": 4, "name": "算法工程师", "category": "技术开发", "description": "机器学习算法研发", "skills": "[\"Python\", \"TensorFlow/PyTorch\", \"\\u6570\\u5b66\\u57fa\\u7840\"]", "salary_range": null, "created_at": "2026-03-06 02:19:36"}, {"id": 5, "name": "数据分析师", "category": "数据分析", "description": "业务数据分析与挖掘", "skills": "[\"SQL\", \"Python/R\", \"\\u7edf\\u8ba1\\u5b66\"]", "salary_range": null, "created_at": "2026-03-06 02:19:36"}, {"id": 6, "name": "产品经理", "category": "产品", "description": "产品规划与设计", "skills": "[\"\\u9700\\u6c42\\u5206\\u6790\", \"\\u539f\\u578b\\u8bbe\\u8ba1\", \"\\u9879\\u76ee\\u7ba1\\u7406\"]", "salary_range": null, "created_at": "2026-03-06 02:19:36"}, {"id": 7, "name": "UI设计师", "category": "设计", "description": "用户界面设计", "skills": "[\"Sketch/Figma\", \"\\u89c6\\u89c9\\u8bbe\\u8ba1\", \"\\u4ea4\\u4e92\\u8bbe\\u8ba1\"]", "salary_range": null, "created_at": "2026-03-06 02:19:36"}, {"id": 8, "name": "测试工程师", "category": "测试", "description": "软件质量保证", "skills": "[\"\\u6d4b\\u8bd5\\u65b9\\u6cd5\", \"\\u81ea\\u52a8\\u5316\\u6d4b\\u8bd5\", \"\\u6027\\u80fd\\u6d4b\\u8bd5\"]", "salary_range": null, "created_at": "2026-03-06 02:19:36"}, {"id": 9, "name": "运维工程师", "category": "运维", "description": "系统运维与DevOps", "skills": "[\"Linux\", \"Docker/K8s\", \"Shell\"]", "salary_range": null, "created_at": "2026-03-06 02:19:36"}, {"id": 10, "name": "投资分析师", "category": "金融", "description": "投资研究与分析", "skills": "[\"\\u8d22\\u52a1\\u5206\\u6790\", \"\\u884c\\u4e1a\\u7814\\u7a76\", \"\\u4f30\\u503c\\u5efa\\u6a21\"]", "salary_range": null, "created_at": "2026-03-06 02:19:36"}, {"id": 11, "name": "审计师", "category": "财务", "description": "财务审计与合规", "skills": "[\"\\u4f1a\\u8ba1\\u51c6\\u5219\", \"\\u5ba1\\u8ba1\\u6d41\\u7a0b\", \"Excel\"]", "salary_range": null, "created_at": "2026-03-06 02:19:36"}, {"id": 12, "name": "人力资源专员", "category": "HR", "description": "招聘与人才管理", "skills": "[\"\\u62db\\u8058\\u6280\\u5de7\", \"\\u52b3\\u52a8\\u6cd5\", \"\\u6c9f\\u901a\\u80fd\\u529b\"]", "salary_range": null, "created_at": "2026-03-06 02:19:36"}, {"id": 13, "name": "市场营销专员", "category": "市场", "description": "市场推广与品牌", "skills": "[\"\\u5e02\\u573a\\u8c03\\u7814\", \"\\u8425\\u9500\\u7b56\\u5212\", \"\\u6570\\u636e\\u5206\\u6790\"]", "salary_range": null, "created_at": "2026-03-06 02:19:36"}, {"id": 14, "name": "硬件工程师", "category": "硬件", "description": "电子硬件设计开发", "skills": "[\"\\u7535\\u8def\\u8bbe\\u8ba1\", \"PCB\\u8bbe\\u8ba1\", \"\\u5d4c\\u5165\\u5f0f\"]", "salary_range": null, "created_at": "2026-03-06 02:19:36"}, {"id": 15, "name": "通信工程师", "category": "通信", "description": "通信网络规划与优化", "skills": "[\"\\u901a\\u4fe1\\u539f\\u7406\", \"\\u7f51\\u7edc\\u4f18\\u5316\", \"5G\\u6280\\u672f\"]", "salary_range": null, "created_at": "2026-03-06 02:19:36"}, {"id": 16, "name": "自动化工程师", "category": "自动化", "description": "工业自动化系统设计", "skills": "[\"PLC\", \"\\u81ea\\u52a8\\u63a7\\u5236\", \"\\u5de5\\u4e1a\\u7f51\\u7edc\"]", "salary_range": null, "created_at": "2026-03-06 02:19:36"}, {"id": 17, "name": "机械工程师", "category": "机械", "description": "机械设计与制造", "skills": "[\"CAD/CAM\", \"\\u673a\\u68b0\\u539f\\u7406\", \"\\u6750\\u6599\\u5b66\"]", "salary_range": null, "created_at": "2026-03-06 02:19:36"}, {"id": 18, "name": "结构工程师", "category": "土木", "description": "建筑结构设计", "skills": "[\"\\u7ed3\\u6784\\u8bbe\\u8ba1\", \"CAD\", \"\\u529b\\u5b66\\u57fa\\u7840\"]", "salary_range": null, "created_at": "2026-03-06 02:19:36"}, {"id": 19, "name": "建筑设计师", "category": "建筑", "description": "建筑设计方案", "skills": "[\"\\u5efa\\u7b51\\u8bbe\\u8ba1\", \"AutoCAD\", \"\\u8bbe\\u8ba1\\u89c4\\u8303\"]", "salary_range": null, "created_at": "2026-03-06 02:19:36"}, {"id": 20, "name": "医生", "category": "医疗", "description": "临床诊疗", "skills": "[\"\\u533b\\u5b66\\u77e5\\u8bc6\", \"\\u4e34\\u5e8a\\u6280\\u80fd\", \"\\u6c9f\\u901a\\u80fd\\u529b\"]", "salary_range": null, "created_at": "2026-03-06 02:19:36"}, {"id": 21, "name": "律师", "category": "法律", "description": "法律咨询与诉讼", "skills": "[\"\\u6cd5\\u5f8b\\u77e5\\u8bc6\", \"\\u6587\\u4e66\\u5199\\u4f5c\", \"\\u8fa9\\u8bba\\u6280\\u5de7\"]", "salary_range": null, "created_at": "2026-03-06 02:19:36"}, {"id": 22, "name": "编辑", "category": "媒体", "description": "内容编辑与策划", "skills": "[\"\\u6587\\u5b57\\u529f\\u5e95\", \"\\u5185\\u5bb9\\u7b56\\u5212\", \"\\u65b0\\u5a92\\u4f53\"]", "salary_range": null, "created_at": "2026-03-06 02:19:36"}, {"id": 23, "name": "翻译", "category": "语言", "description": "口译与笔译", "skills": "[\"\\u53cc\\u8bed\\u80fd\\u529b\", \"\\u4e13\\u4e1a\\u77e5\\u8bc6\", \"\\u8de8\\u6587\\u5316\\u6c9f\\u901a\"]", "salary_range": null, "created_at": "2026-03-06 02:19:36"}, {"id": 24, "name": "平面设计师", "category": "设计", "description": "平面设计创作", "skills": "[\"PS/AI\", \"\\u521b\\u610f\\u601d\\u7ef4\", \"\\u6392\\u7248\\u8bbe\\u8ba1\"]", "salary_range": null, "created_at": "2026-03-06 02:19:36"}], "companies": [{"id": 1, "name": "阿里巴巴", "industry_id": 1, "employee_count": "10000+人", "registered_capital": "1000万+", "company_type": "民营", "established_date": null, "org_structure": "完善的组织架构，技术/产品/运营体系分明", "dept_position": "各BG独立，事业部制", "job_in_dept_position": "核心部门", "new_employee_attitude": "重视新人培养，有完善的培训体系", "training_system": "有导师一对一指导", "company_culture": "阿里味，结果导向，拥抱变化", "work_atmosphere": "快节奏，竞争激烈", "work_life_balance": "996较多", "future_plans": "云计算、AI、国际化", "key_projects": "阿里云、菜鸟、钉钉", "company_dynamics": "持续布局AI和云计算", "campus_recruit": 1, "social_recruit": 1, "recruit_conditions": "985/211优先，看重项目经验", "core_match_points": "技术驱动，重视业务理解", "growth_space_score": 8.5, "stability_score": 9.0, "salary_competitiveness": 9.5, "work_life_balance_score": 5.0, "data_source": null, "updated_at": "2026-03-06 02:19:36", "created_at": "2026-03-06 02:19:36"}, {"id": 2, "name": "腾讯", "industry_id": 1, "employee_count": "10000+人", "registered_capital": "1000万+", "company_type": "民营", "established_date": null, "org_structure": "六大事业群架构", "dept_position": "WXG/CSIG/IEG等", "job_in_dept_position": "视岗位而定", "new_employee_attitude": "新人培养体系完善", "training_system": "导师制度成熟", "company_culture": "用户为本，科技向善", "work_atmosphere": "相对温和，产品导向", "work_life_balance": "WLB相对较好", "future_plans": "微信生态、游戏、云服务", "key_projects": "视频号、企业微信、云业务", "company_dynamics": "持续投入AI研发", "campus_recruit": 1, "social_recruit": 1, "recruit_conditions": "看重综合素质和产品思维", "core_match_points": "产品驱动，用户导向", "growth_space_score": 8.5, "stability_score": 9.0, "salary_competitiveness": 9.0, "work_life_balance_score": 7.0, "data_source": null, "updated_at": "2026-03-06 02:19:36", "created_at": "2026-03-06 02:19:36"}, {"id": 3, "name": "字节跳动", "industry_id": 1, "employee_count": "10000+人", "registered_capital": "1000万+", "company_type": "民营", "established_date": null, "org_structure": "扁平化管理", "dept_position": "产品线众多", "job_in_dept_position": "视项目而定", "new_employee_attitude": "快节奏培养", "training_system": "导师制+项目实战", "company_culture": "追求极致，务实高效", "work_atmosphere": "年轻有活力，数据驱动", "work_life_balance": "大小周已取消", "future_plans": "抖音生态、AI、国际化", "key_projects": "TikTok、飞书、火山引擎", "company_dynamics": "大力投入AI领域", "campus_recruit": 1, "social_recruit": 1, "recruit_conditions": "看重技术能力和学习速度", "core_match_points": "技术驱动，数据导向", "growth_space_score": 9.0, "stability_score": 8.0, "salary_competitiveness": 9.5, "work_life_balance_score": 6.0, "data_source": null, "updated_at": "2026-03-06 02:19:36", "created_at": "2026-03-06 02:19:36"}, {"id": 4, "name": "美团", "industry_id": 1, "employee_count": "5000-10000人", "registered_capital": "500万+", "company_type": "民营", "established_date": null, "org_structure": "到家/到店/新业务三大板块", "dept_position": "业务线清晰", "job_in_dept_position": "核心业务", "new_employee_attitude": "注重实战培养", "training_system": "业务导师制", "company_culture": "长期有耐心，坚持做正确的事", "work_atmosphere": "务实，执行力强", "work_life_balance": "视部门而定", "future_plans": "本地生活、科技零售", "key_projects": "无人机配送、自动车", "company_dynamics": "深耕本地生活", "campus_recruit": 1, "social_recruit": 1, "recruit_conditions": "看重执行力和业务理解", "core_match_points": "业务驱动，执行力强", "growth_space_score": 8.0, "stability_score": 8.0, "salary_competitiveness": 8.5, "work_life_balance_score": 6.5, "data_source": null, "updated_at": "2026-03-06 02:19:36", "created_at": "2026-03-06 02:19:36"}, {"id": 5, "name": "百度", "industry_id": 1, "employee_count": "10000+人", "registered_capital": "1000万+", "company_type": "民营", "established_date": null, "org_structure": "AI/云/移动生态", "dept_position": "AI相关为核心", "job_in_dept_position": "AI部门", "new_employee_attitude": "技术培养体系完善", "training_system": "技术导师制", "company_culture": "简单可依赖", "work_atmosphere": "技术氛围浓厚", "work_life_balance": "相对规律", "future_plans": "AI大模型、自动驾驶", "key_projects": "文心一言、Apollo", "company_dynamics": "全面转型AI", "campus_recruit": 1, "social_recruit": 1, "recruit_conditions": "看重技术深度和AI背景", "core_match_points": "技术驱动，AI优先", "growth_space_score": 8.5, "stability_score": 7.5, "salary_competitiveness": 8.5, "work_life_balance_score": 7.5, "data_source": null, "updated_at": "2026-03-06 02:19:36", "created_at": "2026-03-06 02:19:36"}, {"id": 6, "name": "蚂蚁集团", "industry_id": 2, "employee_count": "10000+人", "registered_capital": "1000万+", "company_type": "民营", "established_date": null, "org_structure": "金融/科技/数据", "dept_position": "技术中台+业务线", "job_in_dept_position": "核心技术", "new_employee_attitude": "重视技术培养", "training_system": "双导师制", "company_culture": "让信用等于财富", "work_atmosphere": "技术+金融复合文化", "work_life_balance": "视部门而定", "future_plans": "数字支付、普惠金融", "key_projects": "支付宝、花呗、借呗", "company_dynamics": "回归科技定位", "campus_recruit": 1, "social_recruit": 1, "recruit_conditions": "看重技术+金融复合背景", "core_match_points": "金融科技双轮驱动", "growth_space_score": 8.5, "stability_score": 8.5, "salary_competitiveness": 9.5, "work_life_balance_score": 6.5, "data_source": null, "updated_at": "2026-03-06 02:19:36", "created_at": "2026-03-06 02:19:36"}, {"id": 7, "name": "招商银行", "industry_id": 2, "employee_count": "10000+人", "registered_capital": "1000万+", "company_type": "股份制银行", "established_date": null, "org_structure": "总行-分行-支行", "dept_position": "金融科技部/信用卡中心", "job_in_dept_position": "科技部门", "new_employee_attitude": "系统培养体系", "training_system": "轮岗+导师制", "company_culture": "因您而变", "work_atmosphere": "稳健专业", "work_life_balance": "规律作息", "future_plans": "零售银行、金融科技", "key_projects": "掌上生活、摩羯智投", "company_dynamics": "数字化转型", "campus_recruit": 1, "social_recruit": 1, "recruit_conditions": "985/211优先，稳定优先", "core_match_points": "金融科技转型", "growth_space_score": 7.5, "stability_score": 9.5, "salary_competitiveness": 8.0, "work_life_balance_score": 8.5, "data_source": null, "updated_at": "2026-03-06 02:19:36", "created_at": "2026-03-06 02:19:36"}, {"id": 8, "name": "华为", "industry_id": 7, "employee_count": "100000+人", "registered_capital": "1000万+", "company_type": "民营", "established_date": null, "org_structure": "运营商/企业/消费者BG", "dept_position": "研发体系庞大", "job_in_dept_position": "研发岗", "new_employee_attitude": "狼性文化培养", "training_system": "导师+项目制", "company_culture": "以客户为中心，以奋斗者为本", "work_atmosphere": "奋斗文化，高压高效", "work_life_balance": "视部门而定", "future_plans": "5G、芯片、云计算", "key_projects": "鸿蒙、麒麟芯片", "company_dynamics": "持续投入研发", "campus_recruit": 1, "social_recruit": 1, "recruit_conditions": "看重抗压能力和技术能力", "core_match_points": "技术驱动，艰苦奋斗", "growth_space_score": 8.5, "stability_score": 8.5, "salary_competitiveness": 9.0, "work_life_balance_score": 6.0, "data_source": null, "updated_at": "2026-03-06 02:19:36", "created_at": "2026-03-06 02:19:36"}, {"id": 9, "name": "比亚迪", "industry_id": 7, "employee_count": "200000+人", "registered_capital": "1000万+", "company_type": "民营", "established_date": null, "org_structure": "汽车/电子/新能源", "dept_position": "事业部制", "job_in_dept_position": "研发/制造", "new_employee_attitude": "大规模制造培养", "training_system": "师傅带徒弟", "company_culture": "技术为王，创新为本", "work_atmosphere": "制造业文化，务实", "work_life_balance": "视岗位而定", "future_plans": "新能源汽车、电池", "key_projects": "刀片电池、DM-i", "company_dynamics": "全面电动化", "campus_recruit": 1, "social_recruit": 1, "recruit_conditions": "看重工程实践能力", "core_match_points": "制造+技术创新", "growth_space_score": 8.0, "stability_score": 9.0, "salary_competitiveness": 8.0, "work_life_balance_score": 7.0, "data_source": null, "updated_at": "2026-03-06 02:19:36", "created_at": "2026-03-06 02:19:36"}], "industries": [{"id": 1, "name": "互联网", "parent_name": null, "description": "互联网与软件服务"}, {"id": 2, "name": "金融科技", "parent_name": null, "description": "金融与科技结合"}, {"id": 3, "name": "电子商务", "parent_name": null, "description": "电商与新零售"}, {"id": 4, "name": "企业服务", "parent_name": null, "description": "B2B与企业软件"}, {"id": 5, "name": "人工智能", "parent_name": null, "description": "AI技术研发与应用"}, {"id": 6, "name": "游戏", "parent_name": null, "description": "游戏开发与运营"}, {"id": 7, "name": "硬件/半导体", "parent_name": null, "description": "硬件制造与芯片"}, {"id": 8, "name": "通信", "parent_name": null, "description": "通信设备与服务"}, {"id": 9, "name": "制造业", "parent_name": null, "description": "传统制造业"}, {"id": 10, "name": "房地产/建筑", "parent_name": null, "description": "房地产开发与建设"}, {"id": 11, "name": "医疗健康", "parent_name": null, "description": "医疗服务与医药"}, {"id": 12, "name": "教育培训", "parent_name": null, "description": "教育与培训服务"}, {"id": 13, "name": "文化传媒", "parent_name": null, "description": "文化娱乐与传媒"}, {"id": 14, "name": "咨询/专业服务", "parent_name": null, "description": "咨询与专业服务"}, {"id": 15, "name": "消费品/零售", "parent_name": null, "description": "消费品与零售"}], "major_jobs": [{"id": 1, "major_id": 1, "job_id": 1, "relevance_score": 0.95, "is_core": 1}, {"id": 2, "major_id": 1, "job_id": 2, "relevance_score": 0.9, "is_core": 1}, {"id": 3, "major_id": 1, "job_id": 3, "relevance_score": 0.88, "is_core": 1}, {"id": 4, "major_id": 1, "job_id": 8, "relevance_score": 0.75, "is_core": 0}, {"id": 5, "major_id": 1, "job_id": 9, "relevance_score": 0.7, "is_core": 0}, {"id": 6, "major_id": 2, "job_id": 1, "relevance_score": 0.9, "is_core": 1}, {"id": 7, "major_id": 2, "job_id": 2, "relevance_score": 0.88, "is_core": 1}, {"id": 8, "major_id": 2, "job_id": 4, "relevance_score": 0.85, "is_core": 1}, {"id": 9, "major_id": 2, "job_id": 3, "relevance_score": 0.85, "is_core": 1}, {"id": 10, "major_id": 4, "job_id": 4, "relevance_score": 0.98, "is_core": 1}, {"id": 11, "major_id": 4, "job_id": 5, "relevance_score": 0.9, "is_core": 1}, {"id": 12, "major_id": 4, "job_id": 3, "relevance_score": 0.85, "is_core": 1}, {"id": 13, "major_id": 5, "job_id": 5, "relevance_score": 0.95, "is_core": 1}, {"id": 14, "major_id": 5, "job_id": 4, "relevance_score": 0.85, "is_core": 1}, {"id": 15, "major_id": 5, "job_id": 3, "relevance_score": 0.8, "is_core": 1}, {"id": 16, "major_id": 6, "job_id": 10, "relevance_score": 0.9, "is_core": 1}, {"id": 17, "major_id": 6, "job_id": 11, "relevance_score": 0.75, "is_core": 0}, {"id": 18, "major_id": 7, "job_id": 11, "relevance_score": 0.95, "is_core": 1}, {"id": 19, "major_id": 7, "job_id": 10, "relevance_score": 0.7, "is_core": 0}, {"id": 20, "major_id": 8, "job_id": 12, "relevance_score": 0.8, "is_core": 1}, {"id": 21, "major_id": 8, "job_id": 13, "relevance_score": 0.8, "is_core": 1}, {"id": 22, "major_id": 8, "job_id": 6, "relevance_score": 0.75, "is_core": 0}, {"id": 23, "major_id": 9, "job_id": 13, "relevance_score": 0.95, "is_core": 1}, {"id": 24, "major_id": 9, "job_id": 6, "relevance_score": 0.75, "is_core": 0}, {"id": 25, "major_id": 10, "job_id": 14, "relevance_score": 0.9, "is_core": 1}, {"id": 26, "major_id": 10, "job_id": 15, "relevance_score": 0.85, "is_core": 1}, {"id": 27, "major_id": 11, "job_id": 15, "relevance_score": 0.95, "is_core": 1}, {"id": 28, "major_id": 11, "job_id": 14, "relevance_score": 0.8, "is_core": 0}, {"id": 29, "major_id": 12, "job_id": 16, "relevance_score": 0.92, "is_core": 1}, {"id": 30, "major_id": 12, "job_id": 14, "relevance_score": 0.75, "is_core": 0}, {"id": 31, "major_id": 13, "job_id": 17, "relevance_score": 0.95, "is_core": 1}, {"id": 32, "major_id": 14, "job_id": 18, "relevance_score": 0.95, "is_core": 1}, {"id": 33, "major_id": 15, "job_id": 19, "relevance_score": 0.95, "is_core": 1}, {"id": 34, "major_id": 16, "job_id": 20, "relevance_score": 0.98, "is_core": 1}, {"id": 35, "major_id": 17, "job_id": 21, "relevance_score": 0.95, "is_core": 1}, {"id": 36, "major_id": 18, "job_id": 22, "relevance_score": 0.85, "is_core": 1}, {"id": 37, "major_id": 19, "job_id": 23, "relevance_score": 0.9, "is_core": 1}, {"id": 38, "major_id": 20, "job_id": 24, "relevance_score": 0.9, "is_core": 1}, {"id": 39, "major_id": 20, "job_id": 7, "relevance_score": 0.85, "is_core": 1}], "company_jobs": [{"id": 1, "company_id": 1, "job_id": 1, "salary_range": "25-40K", "requirements": "3年以上经验", "is_key_position": 0}, {"id": 2, "company_id": 1, "job_id": 2, "salary_range": "25-40K", "requirements": "3年以上经验", "is_key_position": 0}, {"id": 3, "company_id": 1, "job_id": 3, "salary_range": "25-40K", "requirements": "3年以上经验", "is_key_position": 0}, {"id": 4, "company_id": 1, "job_id": 4, "salary_range": "35-60K", "requirements": "硕士及以上，顶会论文", "is_key_position": 0}, {"id": 5, "company_id": 2, "job_id": 1, "salary_range": "25-40K", "requirements": "3年以上经验", "is_key_position": 0}, {"id": 6, "company_id": 2, "job_id": 2, "salary_range": "25-40K", "requirements": "3年以上经验", "is_key_position": 0}, {"id": 7, "company_id": 2, "job_id": 6, "salary_range": "25-40K", "requirements": "3年以上经验", "is_key_position": 0}, {"id": 8, "company_id": 3, "job_id": 1, "salary_range": "25-45K", "requirements": "3年以上经验", "is_key_position": 0}, {"id": 9, "company_id": 3, "job_id": 2, "salary_range": "25-45K", "requirements": "3年以上经验", "is_key_position": 0}, {"id": 10, "company_id": 3, "job_id": 4, "salary_range": "35-70K", "requirements": "硕士及以上", "is_key_position": 0}, {"id": 11, "company_id": 4, "job_id": 1, "salary_range": "20-35K", "requirements": "2年以上经验", "is_key_position": 0}, {"id": 12, "company_id": 5, "job_id": 4, "salary_range": "30-55K", "requirements": "AI相关背景", "is_key_position": 0}, {"id": 13, "company_id": 6, "job_id": 1, "salary_range": "25-40K", "requirements": "金融科技背景优先", "is_key_position": 0}, {"id": 14, "company_id": 6, "job_id": 3, "salary_range": "25-40K", "requirements": "数据能力", "is_key_position": 0}, {"id": 15, "company_id": 7, "job_id": 10, "salary_range": "15-30K", "requirements": "金融背景", "is_key_position": 0}, {"id": 16, "company_id": 8, "job_id": 14, "salary_range": "20-35K", "requirements": "通信/电子背景", "is_key_position": 0}, {"id": 17, "company_id": 9, "job_id": 17, "salary_range": "15-25K", "requirements": "机械/自动化背景", "is_key_position": 0}], "job_industries": [{"id": 1, "job_id": 1, "industry_id": 1}, {"id": 2, "job_id": 2, "industry_id": 1}, {"id": 3, "job_id": 3, "industry_id": 1}, {"id": 4, "job_id": 4, "industry_id": 5}, {"id": 5, "job_id": 5, "industry_id": 1}, {"id": 6, "job_id": 6, "industry_id": 1}, {"id": 7, "job_id": 7, "industry_id": 1}, {"id": 8, "job_id": 8, "industry_id": 1}, {"id": 9, "job_id": 9, "industry_id": 1}, {"id": 10, "job_id": 10, "industry_id": 2}, {"id": 11, "job_id": 11, "industry_id": 2}, {"id": 12, "job_id": 12, "industry_id": 4}, {"id": 13, "job_id": 13, "industry_id": 4}, {"id": 14, "job_id": 14, "industry_id": 7}, {"id": 15, "job_id": 15, "industry_id": 8}, {"id": 16, "job_id": 16, "industry_id": 7}, {"id": 17, "job_id": 17, "industry_id": 9}, {"id": 18, "job_id": 18, "industry_id": 10}, {"id": 19, "job_id": 19, "industry_id": 10}, {"id": 20, "job_id": 20, "industry_id": 11}, {"id": 21, "job_id": 21, "industry_id": 12}, {"id": 22, "job_id": 22, "industry_id": 13}, {"id": 23, "job_id": 23, "industry_id": 13}, {"id": 24, "job_id": 24, "industry_id": 13}]};
+        
+        const { createApp } = Vue;
+        
+        createApp({
+            data() {
+                return {
+                    query: '',
+                    suggestions: [],
+                    showSuggestions: false,
+                    loading: false,
+                    result: null
+                }
+            },
+            methods: {
+                onSearchInput() {
+                    if (this.query.length < 1) {
+                        this.suggestions = [];
+                        return;
+                    }
+                    const majors = DB_DATA.majors || [];
+                    this.suggestions = majors.filter(m => 
+                        m.name.includes(this.query) || m.category.includes(this.query)
+                    ).slice(0, 10);
+                    this.showSuggestions = true;
+                },
+                selectMajor(major) {
+                    this.query = major.name;
+                    this.showSuggestions = false;
+                    this.match();
+                },
+                match() {
+                    if (!this.query.trim()) return;
+                    this.loading = true;
+                    this.showSuggestions = false;
+                    
+                    setTimeout(() => {
+                        const major = (DB_DATA.majors || []).find(m => 
+                            m.name === this.query || m.name.includes(this.query)
+                        );
+                        
+                        if (!major) {
+                            this.result = null;
+                            this.loading = false;
+                            alert('未找到该专业');
+                            return;
+                        }
+                        
+                        // 获取岗位
+                        const majorJobs = (DB_DATA.major_jobs || [])
+                            .filter(mj => mj.major_id === major.id)
+                            .sort((a, b) => b.relevance_score - a.relevance_score)
+                            .slice(0, 5);
+                        
+                        const jobs = majorJobs.map(mj => {
+                            const job = (DB_DATA.jobs || []).find(j => j.id === mj.job_id);
+                            if (!job) return null;
+                            
+                            // 获取公司
+                            const companyJobs = (DB_DATA.company_jobs || [])
+                                .filter(cj => cj.job_id === job.id);
+                            
+                            const companies = companyJobs.map(cj => {
+                                const company = (DB_DATA.companies || []).find(c => c.id === cj.company_id);
+                                const industry = company?.industry_id 
+                                    ? (DB_DATA.industries || []).find(i => i.id === company.industry_id)
+                                    : null;
+                                return company ? { ...company, industry_name: industry?.name } : null;
+                            }).filter(Boolean);
+                            
+                            return { ...job, ...mj, companies };
+                        }).filter(Boolean);
+                        
+                        this.result = {
+                            major,
+                            jobs,
+                            total_jobs: jobs.length,
+                            total_companies: jobs.reduce((sum, j) => sum + (j.companies?.length || 0), 0)
+                        };
+                        
+                        this.loading = false;
+                    }, 500);
+                },
+                getScoreClass(s) {
+                    return s >= 8 ? 'high' : s >= 5 ? 'medium' : 'low';
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
